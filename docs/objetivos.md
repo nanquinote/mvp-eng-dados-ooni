@@ -11,7 +11,7 @@ otimizado (Data Warehouse) impede a análise comparativa ágil e a geração de 
 acionáveis sobre as tendências de bloqueio e a responsabilidade dos provedores de  
 internet (ISPs).
 
-![Arquitetura do pipeline](arquitetura.png)
+![Arquitetura do pipeline](pipeline.png)
 
 O objetivo deste MVP é construir um pipeline completo de Engenharia de Dados utilizando  
 a plataforma Databricks/Spark para coletar, transformar e modelar as medições do OONI  
