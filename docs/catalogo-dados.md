@@ -40,21 +40,33 @@
 
 ---
 
-## 3. Camada Gold
-**Descrição:** Tabelas agregadas para consumo analítico.
+# Catálogo de Dados - Camada Gold (Star Schema)
 
-### Tabela: `gold_anomalias`
-*Agregação por país e teste.*
-* `probe_cc`, `test_name`, `total_medicoes`, `qtd_anomalias`, `taxa_anomalia`.
+## Tabela de Fato: fact_measurements
+**Descrição:** Contém as métricas individuais de cada medição realizada.
 
-### Tabela: `gold_confirmed`
-*Foco em bloqueios confirmados.*
-* `probe_cc`, `test_name`, `total_medicoes`, `qtd_confirmed_blocked`, `taxa_confirmed_blocked`.
+| Campo | Tipo | Domínio / Valores Esperados | Descrição |
+| :--- | :--- | :--- | :--- |
+| measurement_uid | String | UUID único | Identificador da medição |
+| measurement_start_time | Timestamp | 2018-01-01 a 2024-12-31 | Data e hora do início do teste |
+| anomaly | Boolean | true, false | Indica se houve comportamento anômalo |
+| confirmed | Boolean | true, false | Indica se o bloqueio foi confirmado |
+| failure | Boolean | true, false | Indica se o teste falhou tecnicamente |
+| fk_country | String | ISO-3166 (ex: 'BR', 'AR', 'VE') | Chave para dim_country |
+| fk_test | String | 'web_connectivity', 'whatsapp', etc | Chave para dim_test |
 
-### Tabela: `gold_isps_br`
-*Ranking de provedores no Brasil.*
-* `probe_asn`, `total_medicoes`, `qtd_anomalias`, `taxa_anomalia`.
+## Tabela de Dimensão: dim_isp
+**Descrição:** Atributos dos Provedores de Internet (ISPs).
 
-### Tabela: `gold_temporal`
-*Evolução anual por país.*
-* `year`, `probe_cc`, `test_name`, `total_medicoes`, `qtd_anomalias`, `taxa_anomalia`.
+| Campo | Tipo | Domínio / Valores Esperados | Descrição |
+| :--- | :--- | :--- | :--- |
+| probe_asn | String | Prefixo 'AS' + número (ex: 'AS28573') | Sistema Autônomo do Provedor |
+| isp_name | String | Nomes comerciais | Nome do provedor identificado |
+
+---
+
+## Linhagem e Transformação
+1. **Origem:** OONI API (JSON).
+2. **Bronze:** Persistência direta do JSON em sistema de arquivos.
+3. **Silver:** Limpeza de nulos e normalização de timestamps via Spark.
+4. **Gold:** Decomposição da tabela Silver em Fatos e Dimensões para otimização de consultas SQL e suporte ao Esquema Estrela.
