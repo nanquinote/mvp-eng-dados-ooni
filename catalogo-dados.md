@@ -1,70 +1,60 @@
-# Catálogo de Dados — OONI (MVP)
+# Catálogo de Dados — OONI 
 
-## Tabela: bronze_ooni
-
-**Descrição:**  
-Dados brutos coletados da API do OONI, sem regras de negócio aplicadas.
+## 1. Camada Bronze
+**Tabela:** `bronze_ooni`  
+**Origem:** API OONI (JSON)  
+**Particionamento:** `country`, `year`
 
 | Campo | Tipo | Descrição |
-|------|------|-----------|
+| :--- | :--- | :--- |
 | measurement_uid | string | Identificador único da medição |
-| measurement_start_time | timestamp | Data/hora da medição |
-| test_name | string | Tipo de teste (web_connectivity, whatsapp, telegram, facebook_messenger) |
-| anomaly | boolean | Indica anomalia detectada |
-| confirmed | boolean | Bloqueio confirmado |
-| failure | boolean | Falha na medição |
-| probe_cc | string | País do probe (ISO-3166) |
+| measurement_start_time | string | Timestamp original da API |
+| probe_cc | string | Código do país (ISO-3166) |
+| probe_asn | string | ASN do provedor de internet |
+| test_name | string | Nome do teste (ex: whatsapp, telegram) |
+| anomaly | boolean | Indica se houve anomalia |
+| confirmed | boolean | Indica bloqueio confirmado |
+| failure | boolean | Indica falha na execução do teste |
+| scores | struct | Objeto contendo métricas de bloqueio |
+
+---
+
+## 2. Camada Silver
+**Tabela:** `silver_ooni`  
+**Transformações:** Tipagem de data, tratamento de nulos em scores e criação de flag booleana de bloqueio.
+
+| Campo | Tipo | Descrição |
+| :--- | :--- | :--- |
+| measurement_uid | string | Identificador único |
+| measurement_start_time | timestamp | Data e hora normalizada |
+| probe_cc | string | Código do país |
 | probe_asn | string | ASN do provedor |
-| report_id | string | ID do relatório |
-| measurement_url | string | URL da medição bruta |
-| scores | struct | Resultados técnicos detalhados |
-| country | string | País (derivado) |
-| year | integer | Ano da medição (derivado) |
-
-Camada: **Bronze**  
-Formato: **JSON**
-
----
-
-## Tabela: silver_ooni
-
-**Descrição:**  
-Dados limpos e padronizados, com JSON achatado e campos relevantes selecionados.
-
-| Campo | Tipo | Descrição |
-|------|------|-----------|
-| measurement_uid | string | Identificador da medição |
-| measurement_date | date | Data da medição |
-| test_name | string | Tipo de teste |
-| anomaly | boolean | Anomalia detectada |
-| confirmed | boolean | Bloqueio confirmado |
-| failure | boolean | Falha |
-| probe_cc | string | País |
-| probe_asn | string | ASN |
-| blocking_global | double | Score de bloqueio global |
-| blocking_isp | double | Score de bloqueio por ISP |
-| blocking_local | double | Score de bloqueio local |
-| year | integer | Ano |
-
-Camada: **Silver**  
-Formato: **Parquet / Delta**
+| test_name | string | Nome do teste |
+| anomaly | boolean | Flag de anomalia |
+| confirmed | boolean | Flag de confirmação original |
+| failure | boolean | Flag de falha |
+| blocking_country | double | Score de bloqueio nacional (Default 0.0) |
+| blocking_isp | double | Score de bloqueio por ISP (Default 0.0) |
+| blocking_global | double | Score de bloqueio global (Default 0.0) |
+| confirmed_blocked | boolean | Bloqueio validado (confirmed == True) |
 
 ---
 
-## Tabela: gold_censorship_summary
+## 3. Camada Gold
+**Descrição:** Tabelas agregadas para consumo analítico.
 
-**Descrição:**  
-Tabela analítica agregada para responder perguntas de negócio.
+### Tabela: `gold_anomalias`
+*Agregação por país e teste.*
+* `probe_cc`, `test_name`, `total_medicoes`, `qtd_anomalias`, `taxa_anomalia`.
 
-| Campo | Tipo | Descrição |
-|------|------|-----------|
-| country | string | País |
-| test_name | string | Tipo de serviço/teste |
-| year | integer | Ano |
-| total_measurements | long | Total de medições |
-| anomaly_count | long | Total de anomalias |
-| confirmed_blocked_count | long | Bloqueios confirmados |
-| anomaly_rate | double | Percentual de anomalias |
+### Tabela: `gold_confirmed`
+*Foco em bloqueios confirmados.*
+* `probe_cc`, `test_name`, `total_medicoes`, `qtd_confirmed_blocked`, `taxa_confirmed_blocked`.
 
-Camada: **Gold**  
-Formato: **Delta / Tabela SQL**
+### Tabela: `gold_isps_br`
+*Ranking de provedores no Brasil.*
+* `probe_asn`, `total_medicoes`, `qtd_anomalias`, `taxa_anomalia`.
+
+### Tabela: `gold_temporal`
+*Evolução anual por país.*
+* `year`, `probe_cc`, `test_name`, `total_medicoes`, `qtd_anomalias`, `taxa_anomalia`.
